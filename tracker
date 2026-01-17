@@ -1,0 +1,53 @@
+Fred -
+
+- hours worked:
+14
+- milestones achieved -
+organisation of project
+basic code setup w/kai
+basic player creation w/kai
+player movement
+finding and photoshopping sprite sheet for tile map
+creation of level class
+loading and drawing tiles on the screen
+created a test level
+added screen scroll
+combined and edited kais collision code to work with tiles
+
+
+Kai -
+
+- hours worked:
+8
+
+- milestones achieved -
+basic code setup w/Fred
+basic player creation w/Fred
+simple block class (to test collisions)
+collision checking with blocks
+collision handling with the blocks
+added terminal velocity constant so that collisions do not glitch out
+checking if player is on top of a block, allowing jumps
+
+Jessica -
+
+- hours worked:
+7
+
+- milestones achieved -
+got the Sprite sheet 
+basic making the sprite walk 
+Created the sticky moss enemy 
+making sure that when the player is touching the moss their speed slows down 
+making sure lives were lost when touching moss w/jass
+making gameover page when all lives were lost 
+
+Jasleen -
+
+- hours worked:
+5
+
+- milestones achieved -
+basic health bar that decreases using a button for now
+instead of health bar i did 3 lives, each life is lost when player in contact with moss
+
