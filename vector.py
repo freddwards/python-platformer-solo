@@ -1,5 +1,6 @@
 import math
 
+
 class Vector:
 
     # Initialiser
@@ -64,7 +65,7 @@ class Vector:
 
     # Divides the vector by a scalar
     def divide(self, k):
-        return self.multiply(1/k)
+        return self.multiply(1 / k)
 
     def __truediv__(self, k):
         return self.copy().divide(k)
@@ -92,7 +93,7 @@ class Vector:
     # Reflect this vector on a normal
     def reflect(self, normal):
         n = normal.copy()
-        n.multiply(2*self.dot(normal))
+        n.multiply(2 * self.dot(normal))
         self.subtract(n)
         return self
 

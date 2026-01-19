@@ -2,62 +2,51 @@ import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 import os
 import csv
 import math
+import time
 
 from vector import Vector
 from player import Player
-from level import Block
-from moss import Moss
-
+from level import Level
+from level import Powerup
 import constants
 
 
 class Game:
     def __init__(self):
-        self.running = True
         self.state = "menu"
-        self.mouse_pos = [0, 0]
+        self.running = True
         self.level = 1
         self.right = False
         self.left = False
         self.jump = False
-        self.damaged_cooldown = 0  # prevents continuous damage
+        self.current_level = 0
         self.blocks = []
+        self.powerups = []
+        self.powerup_images = []
         self.moss = []
+        self.tile_list = []
 
-        # declaring player object
-        self.player = Player(Vector(15, 150))
+        # Declare player
+        self.player = Player(Vector(200, 150), self)
+
+        # Define world data
+        self.loadImages()
+        self.world_data = world_data = []
+        self.loadLevel(self.current_level)
+        self.screen_scroll = [0, 0]
 
         self.interaction = Interaction(self)
-
-        # declaring several moss objects
-        self.moss = [
-            # position (x, y) , height , width
-            Moss(Vector(200, 600), 10, 200),
-            Moss(Vector(50, 600), 10, 100),
-            Moss(Vector(500, 600), 10, 50)
-        ]
-
-        self.blocks = [
-            Block((500, 500)),
-            Block((200, 400)),
-            Block((300, 300)),
-        ]
-
-        # Initialize tile_list and world_data
-        self.tile_list = []
-        self.world_data = []
-
-        # Initialize screen_scroll
-        self.screen_scroll = 0
-
-        # Load images and level data
-        self.loadImages()
-        self.loadLevel()
+        # Declare level
+        self.level = Level(self)
+        # Process level data
+        self.level.process_data(self.world_data, self.tile_list)
 
     def mouse_handler(self, pos):
         # handles mouse click
         self.mouse_pos = pos
         if self.state == "menu":
+            self.state = "instruct"
+        elif self.state == "instruct":
             self.state = "game"
             self.player.health.current_health = self.player.health.max_health
 
@@ -67,81 +56,117 @@ class Game:
             self.draw_menu(canvas)
         elif self.state == "game":
             self.draw_game(canvas)
+        elif self.state == "instruct":
+            self.draw_instructions(canvas)
         else:
             self.draw_game_over(canvas)
 
     def draw_menu(self, canvas):
         # draws main menu screen
-        canvas.draw_text("MUSHROOM DUNGEON",
-                         (constants.SCREEN_WIDTH // 2 - 200, constants.SCREEN_HEIGHT // 3 + 50),
-                         50, "White", "monospace")
+        canvas.draw_text(
+            "MUSHROOM DUNGEON",
+            (constants.SCREEN_WIDTH // 2 - 275, constants.SCREEN_HEIGHT // 3 - 100),
+            65,
+            "White",
+            "monospace",
+        )
 
         # making "click to play" a clickable text
         text = "CLICK TO PLAY"
-        text_width = frame.get_canvas_textwidth(text, 30, 'monospace')
-        text_x = constants.SCREEN_WIDTH // 2 - text_width // 2 + 20
-        text_y = constants.SCREEN_HEIGHT // 2
-        canvas.draw_text(text, (text_x, text_y), 30, "White", "monospace")
+        text_width = frame.get_canvas_textwidth(text, 30, "monospace")
+        text_x = constants.SCREEN_WIDTH // 2 - text_width // 2 - 25
+        text_y = constants.SCREEN_HEIGHT // 2 + 100
+        canvas.draw_text(text, (text_x, text_y), 35, "White", "monospace")
 
-    def draw_game(self, canvas):
-        if self.player.health.current_health > 0:
-            self.interaction.check_and_handle_collisions()
+    def draw_instructions(self, canvas):
+        # draws main menu screen
+        canvas.draw_text(
+            "INSTRUCTIONS",
+            (constants.SCREEN_WIDTH // 2 - 275, constants.SCREEN_HEIGHT // 3 - 100),
+            65,
+            "White",
+            "monospace",
+        )
 
-            self.player.draw(canvas)
+        # draw the instructions
+        instructions = [
+            "Instructions:",
+            "• Use A to move left",
+            "• Use D to move right",
+            "• Space to jump",
+            "• Collect powerups to gain abilities",
+            "• Goal is to navigate the cave till the end",
+            "Good luck!",
+        ]
 
-            # drawing the moss objects
-            for moss in self.moss:
-                moss.draw(canvas)
+        # position of instructions below title
+        start_y = constants.SCREEN_HEIGHT // 3 - 50
+        line_height = 30
 
-            for block in self.blocks:
-                block.draw(canvas)
+        for i, instruction in enumerate(instructions):
+            y_pos = start_y + (i * line_height)
+            canvas.draw_text(
+                instruction,
+                (constants.SCREEN_WIDTH // 2 - 215, y_pos),
+                24,
+                "White",
+                "monospace",
+            )
 
-            self.update()
-        else:
-            self.state = "game_over"
+        # making "click to play" a clickable text
+        text = "CLICK TO PLAY"
+        text_width = frame.get_canvas_textwidth(text, 30, "monospace")
+        text_x = constants.SCREEN_WIDTH // 2 - text_width // 2 - 25
+        text_y = constants.SCREEN_HEIGHT // 2 + 100
+        canvas.draw_text(text, (text_x, text_y), 35, "White", "monospace")
 
     def draw_game_over(self, canvas):
         # draws the game over screen
-        canvas.draw_text("GAME OVER", (constants.SCREEN_WIDTH // 2 - 200, constants.SCREEN_HEIGHT // 3 + 30),
-                         70, "Red", "monospace")
-        canvas.draw_text("Press R to restart", (constants.SCREEN_WIDTH // 2 - 175, constants.SCREEN_HEIGHT // 2 - 25),
-                         30, "White", "monospace")
+        canvas.draw_text(
+            "GAME OVER",
+            (constants.SCREEN_WIDTH // 2 - 200, constants.SCREEN_HEIGHT // 3 + 30),
+            70,
+            "Red",
+            "monospace",
+        )
+        canvas.draw_text(
+            "Press R to restart",
+            (constants.SCREEN_WIDTH // 2 - 175, constants.SCREEN_HEIGHT // 2 - 25),
+            30,
+            "White",
+            "monospace",
+        )
+
+    def draw_game(self, canvas):
+
+        if self.player.health.current_health > 0:
+            self.level.update(self.screen_scroll)
+            self.level.draw(canvas)
+            self.player.draw(canvas)
+            self.update()
+            for block in self.blocks:
+                block.draw(canvas)
+            for powerup in self.powerups:
+                powerup.draw(canvas)
+        else:
+            self.state = "game_over"
 
     def update(self):
-        # call move method for player based on player inputs
-        self.screen_scroll = self.player.move(self.left, self.right, self.jump)  # takes output for moving screen
+        # Call move method for player based on player inputs
+        self.screen_scroll = self.player.move(
+            self.left, self.right, self.jump
+        )  # takes output for moving screen
+        self.interaction.check_and_handle_collisions()
 
-        # checking if the player is in contact with the moss
-        on_moss = False
-        for moss in self.moss:
-            if moss.is_player_on_moss(self.player):
-                on_moss = True
-
-                break
-        self.player.on_moss = on_moss
-
-        if on_moss:
-
-            self.player.vel.x *= constants.SLOW_FACTOR  # Reduce horizontal velocity
-            self.player.vel.y *= constants.SLOW_FACTOR  # Reduce vertical velocity (optional)
-
-            if self.damaged_cooldown == 0:  # Prevents immediate life loss
-                self.damaged_player()
-                self.damaged_cooldown = 180  # A delay before next damage
-
-        # Decrease cooldown timer
-        if self.damaged_cooldown > 0:
-            self.damaged_cooldown -= 1
-
-    def keyDown(self, key):  # taking inputs from the player
+    def keyDown(self, key):  # Handle key presses
         if self.state == "game":
-            if key == simplegui.KEY_MAP['d']:
+            if key == simplegui.KEY_MAP["d"]:
                 self.right = True
-            elif key == simplegui.KEY_MAP['a']:
+            elif key == simplegui.KEY_MAP["a"]:
                 self.left = True
-            elif key == simplegui.KEY_MAP['w']:
+            elif key == simplegui.KEY_MAP["space"]:
                 self.jump = True
-        elif self.state == "game_over" and key == simplegui.KEY_MAP['r']:
+        elif self.state == "game_over" and key == simplegui.KEY_MAP["r"]:
             self.state = "game"
             # restarts the game fully
             global game
@@ -151,111 +176,259 @@ class Game:
             frame.set_keyup_handler(game.keyUp)
             frame.set_mouseclick_handler(game.mouse_handler)
 
-    def keyUp(self, key):  # ending inputs from the player
+    def keyUp(self, key):  # Handle key releases
         if self.state == "game":
-            if key == simplegui.KEY_MAP['d']:
+            if key == simplegui.KEY_MAP["d"]:
                 self.right = False
-            elif key == simplegui.KEY_MAP['a']:
+            elif key == simplegui.KEY_MAP["a"]:
                 self.left = False
-            elif key == simplegui.KEY_MAP['w']:
+            elif key == simplegui.KEY_MAP["space"]:
                 self.jump = False
 
-    def damaged_player(self):
-        self.player.health.life_lost()
+    def return_to_checkpoint(self):
+        self.world_data = []
+        self.loadLevel(self.current_level)
+        self.screen_scroll = [0, 0]
+        self.level = Level(self)
+        self.level.process_data(self.world_data, self.tile_list)
 
     def loadImages(self):
-        # Load tilemap images
-        for x in range(constants.TILE_TYPES):
-            absolute_path = os.path.abspath(f"assets/tiles/{x}.png")
-            image = simplegui.load_image(absolute_path)
-            self.tile_list.append(image)
+        self.tile_list = []
+        self.powerup_images = []
 
-    def loadLevel(self):
+        # get the absolute path and convert to proper format (fix for images not loading)
+        base_dir = os.path.abspath("assets")
+        base_uri = f"file:///{base_dir.replace('\\', '/')}"
+
+        for x in range(constants.TILE_TYPES):
+
+            tile_uri = f"{base_uri}/tiles/{x}.png"
+            print(f"Loading image: {tile_uri}")
+
+            # load the image
+            img = simplegui.load_image(tile_uri)
+
+            self.tile_list.append(img)
+            print(f"Loaded tile {x} - Dimensions: {img.get_width()}x{img.get_height()}")
+
+        for x in range(constants.POWERUP_TYPES):
+
+            powerup_uri = f"{base_uri}/powerups/{x}.png"
+            print(f"Loading image: {powerup_uri}")
+
+            # load the image
+            img = simplegui.load_image(powerup_uri)
+
+            # check if the image loaded properly
+            if img.get_width() == 0:
+                print(f"Image {x}.png didn't load properly - using placeholder")
+                # create a placeholder blank image
+                img = simplegui._create_blank_image(
+                    constants.POWERUP_SIZE, constants.POWERUP_SIZE
+                )
+                img.fill((255, 255, 255))
+
+            self.powerup_images.append(img)
+            print(
+                f"Loaded powerup {x} - Dimensions: {img.get_width()}x{img.get_height()}"
+            )
+
+    def loadLevel(self, level):
+        self.world_data = []
+        self.powerups = []
         for row in range(150):  # creating empty 150x150 world_data list
             r = [-1] * 150
             self.world_data.append(r)
         # loading level data from csv file into world_data
-        with open("levels/level0_data.csv", newline="") as csvfile:
+        with open(f"levels/level{level}_data.csv", newline="") as csvfile:
             reader = csv.reader(csvfile, delimiter=",")
             for x, row in enumerate(reader):
                 for y, tile in enumerate(row):
-                    self.world_data[x][y] = int(tile)
+                    if tile == "H":
+                        self.powerups.append(
+                            Powerup(
+                                self,
+                                Vector(
+                                    y * constants.TILE_SIZE, x * constants.TILE_SIZE
+                                ),
+                                0,
+                            )
+                        )
+                    elif tile == "S":
+                        self.powerups.append(
+                            Powerup(
+                                self,
+                                Vector(
+                                    y * constants.TILE_SIZE, x * constants.TILE_SIZE
+                                ),
+                                1,
+                            )
+                        )
+                    elif tile == "G":
+                        self.powerups.append(
+                            Powerup(
+                                self,
+                                Vector(
+                                    y * constants.TILE_SIZE, x * constants.TILE_SIZE
+                                ),
+                                2,
+                            )
+                        )
+                    elif tile == "P":
+                        self.player.pos.x = y * constants.TILE_SIZE
+                        self.player.pos.y = x * constants.TILE_SIZE
+                    elif tile == "20":
+                        self.powerups.append(
+                            Powerup(
+                                self,
+                                Vector(
+                                    y * constants.TILE_SIZE, x * constants.TILE_SIZE
+                                ),
+                                3,
+                            )
+                        )
+                    elif tile == "22":
+                        self.powerups.append(
+                            Powerup(
+                                self,
+                                Vector(
+                                    y * constants.TILE_SIZE, x * constants.TILE_SIZE
+                                ),
+                                4,
+                            )
+                        )
+                    else:
+                        self.world_data[x][y] = int(tile)
 
 
 class Interaction:
     def __init__(self, game):
         self.game = game
+        self.collision_tolerance = 0.1  # small threshold to prevent jittering
 
     def check_and_handle_collisions(self):
+        self.handle_tile_collisions()
+        self.handle_powerup_collisions()
 
-        self.handle_block_collisions()
-        # self.handle_moss_collisions()
+    def handle_tile_collisions(self):
+        self.game.player.on_ground = False
 
-    def handle_block_collisions(self):
+        for tile in self.game.level.map_tiles:
+            if self.is_colliding_with_tile(self.game.player, tile):
+                self.resolve_tile_collision(self.game.player, tile)
+                self.check_on_ground(self.game.player, tile)
 
-        self.game.player.on_block = False  # assume the player is not on the block
-        for block in self.game.blocks:
-            if self.is_colliding_with_block(self.game.player, block):
-                self.resolve_block_collision(self.game.player, block)
-                if self.game.player.is_on_block(block):
-                    self.game.player.on_block = True  # player is on top of the block
+    def handle_powerup_collisions(self):
+        # collect the powerup and remove it from the list when colliding
+        for powerup in self.game.powerups[:]:
+            if self.is_colliding_with_powerup(self.game.player, powerup):
+                self.game.player.collect_powerup(powerup.type)
+                if powerup.type != "damage" and powerup.type != "ladder":
+                    self.game.powerups.remove(powerup)
 
-    def handle_moss_collisions(self):
-
-        for moss in self.game.moss:
-            if moss.is_player_on_moss(self.game.player):
-                self.game.player.on_moss = True
-
-    def is_colliding_with_block(self, player, block):
-
+    def is_colliding_with_tile(self, player, tile):
+        # find player bounds
         player_left = player.pos.x - player.size[0] / 2
         player_right = player.pos.x + player.size[0] / 2
         player_top = player.pos.y - player.size[1] / 2
         player_bottom = player.pos.y + player.size[1] / 2
 
-        block_left = block.center[0] - block.size[0] / 2
-        block_right = block.center[0] + block.size[0] / 2
-        block_top = block.center[1] - block.size[1] / 2
-        block_bottom = block.center[1] + block.size[1] / 2
+        # find tile bounds
+        tile_left = tile[1] - constants.TILE_SIZE / 2
+        tile_right = tile[1] + constants.TILE_SIZE / 2
+        tile_top = tile[2] - constants.TILE_SIZE / 2
+        tile_bottom = tile[2] + constants.TILE_SIZE / 2
 
-        # check for collision
-        return (player_right > block_left and player_left < block_right and player_bottom > (
-            block_top) and player_top < block_bottom)
-
-    def resolve_block_collision(self, player, block):
-
-        # calculate overlap in x and y
-        overlap_x = min(
-            abs(player.pos.x + player.size[0] / 2 - (block.center[0] - block.size[0] / 2)),
-            abs(player.pos.x - player.size[0] / 2 - (block.center[0] + block.size[0] / 2))
-        )
-        overlap_y = min(
-            abs(player.pos.y + player.size[1] / 2 - (block.center[1] - block.size[1] / 2)),
-            abs(player.pos.y - player.size[1] / 2 - (block.center[1] + block.size[1] / 2))
+        return (
+            player_right > tile_left
+            and player_left < tile_right
+            and player_bottom > tile_top
+            and player_top < tile_bottom
         )
 
-        # resolve collision based on overlap
-        if overlap_x < overlap_y:
-            # horizontal collision
-            if player.pos.x < block.center[0]:
-                player.pos.x = block.center[0] - block.size[0] / 2 - player.size[0] / 2
-            else:
-                player.pos.x = block.center[0] + block.size[0] / 2 + player.size[0] / 2
+    def is_colliding_with_powerup(self, player, powerup):
+        # find player bounds
+        player_left = player.pos.x - player.size[0] / 2
+        player_right = player.pos.x + player.size[0] / 2
+        player_top = player.pos.y - player.size[1] / 2
+        player_bottom = player.pos.y + player.size[1] / 2
+
+        # find powerup bounds
+        powerup_centre = (
+            (powerup.pos.x + constants.POWERUP_SIZE / 2),
+            (powerup.pos.y + constants.POWERUP_SIZE / 2),
+        )
+        powerup_left = powerup.pos.x - constants.POWERUP_SIZE / 2
+        powerup_right = powerup.pos.x + constants.POWERUP_SIZE / 2
+        powerup_top = powerup.pos.y - constants.POWERUP_SIZE / 2
+        powerup_bottom = powerup.pos.y + constants.POWERUP_SIZE / 2
+
+        return (
+            player_right > powerup_left
+            and player_left < powerup_right
+            and player_bottom > powerup_top
+            and player_top < powerup_bottom
+        )
+
+    def resolve_tile_collision(self, player, tile):
+        # find bounds with threshold
+        tile_left = tile[1] - constants.TILE_SIZE / 2 + self.collision_tolerance
+        tile_right = tile[1] + constants.TILE_SIZE / 2 - self.collision_tolerance
+        tile_top = tile[2] - constants.TILE_SIZE / 2 + self.collision_tolerance
+        tile_bottom = tile[2] + constants.TILE_SIZE / 2 - self.collision_tolerance
+
+        # find penetration distances
+        penetration_left = (player.pos.x + player.size[0] / 2) - tile_left
+        penetration_right = tile_right - (player.pos.x - player.size[0] / 2)
+        penetration_top = (player.pos.y + player.size[1] / 2) - tile_top
+        penetration_bottom = tile_bottom - (player.pos.y - player.size[1] / 2)
+
+        # find smallest penetration
+        min_penetration = min(
+            penetration_left, penetration_right, penetration_top, penetration_bottom
+        )
+
+        # resolve collision based on smallest penetration
+        if min_penetration == penetration_left:
+            # collision from left side
+            player.pos.x = tile_left - player.size[0] / 2 - self.collision_tolerance
             player.vel.x = 0
-        else:
-            # vertical collision
-            if player.pos.y < block.center[1]:
-                player.pos.y = block.center[1] - block.size[1] / 2 - player.size[1] / 2
-            else:
-                player.pos.y = block.center[1] + block.size[1] / 2 + player.size[1] / 2
-                player.vel.y = 0
+
+        elif min_penetration == penetration_right:
+            # collision from right side
+            player.pos.x = tile_right + player.size[0] / 2 + self.collision_tolerance
+            player.vel.x = 0
+
+        elif min_penetration == penetration_top:
+            # collision from top
+            player.pos.y = tile_top - player.size[1] / 2 - self.collision_tolerance
+            player.vel.y = 0
+
+        else:  # penetration_bottom
+            # collision from bottom
+            player.pos.y = tile_bottom + player.size[1] / 2 + self.collision_tolerance
+            player.vel.y = 0
+
+    def check_on_ground(self, player, tile):
+        # check if the player is on the ground
+        player_bottom = player.pos.y + player.size[1] / 2
+        tile_top = tile[2] - constants.TILE_SIZE / 2
+
+        if (
+            abs(player_bottom - tile_top) < 5  # Small tolerance
+            and player.pos.x + player.size[0] / 2 > tile[1] - constants.TILE_SIZE / 2
+            and player.pos.x - player.size[0] / 2 < tile[1] + constants.TILE_SIZE / 2
+        ):
+            player.on_ground = True
 
 
-frame = simplegui.create_frame("Mushroom Guy", constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT)
+# Create frame and start game
+frame = simplegui.create_frame(
+    "Mushroom Guy", constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT
+)
 game = Game()
 frame.set_draw_handler(game.draw)
 frame.set_keydown_handler(game.keyDown)
 frame.set_keyup_handler(game.keyUp)
 frame.set_mouseclick_handler(game.mouse_handler)
-
 frame.start()
