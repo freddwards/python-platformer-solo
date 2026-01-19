@@ -1,8 +1,7 @@
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 import os
 import csv
-import math
-import time
+
 
 from vector import Vector
 from player import Player
@@ -23,7 +22,6 @@ class Game:
         self.blocks = []
         self.powerups = []
         self.powerup_images = []
-        self.moss = []
         self.tile_list = []
 
         # Declare player
@@ -31,7 +29,7 @@ class Game:
 
         # Define world data
         self.loadImages()
-        self.world_data = world_data = []
+        self.world_data = []
         self.loadLevel(self.current_level)
         self.screen_scroll = [0, 0]
 
@@ -203,25 +201,18 @@ class Game:
         for x in range(constants.TILE_TYPES):
 
             tile_uri = f"{base_uri}/tiles/{x}.png"
-            print(f"Loading image: {tile_uri}")
-
             # load the image
             img = simplegui.load_image(tile_uri)
 
             self.tile_list.append(img)
-            print(f"Loaded tile {x} - Dimensions: {img.get_width()}x{img.get_height()}")
-
         for x in range(constants.POWERUP_TYPES):
 
             powerup_uri = f"{base_uri}/powerups/{x}.png"
-            print(f"Loading image: {powerup_uri}")
-
             # load the image
             img = simplegui.load_image(powerup_uri)
 
             # check if the image loaded properly
             if img.get_width() == 0:
-                print(f"Image {x}.png didn't load properly - using placeholder")
                 # create a placeholder blank image
                 img = simplegui._create_blank_image(
                     constants.POWERUP_SIZE, constants.POWERUP_SIZE
@@ -229,9 +220,7 @@ class Game:
                 img.fill((255, 255, 255))
 
             self.powerup_images.append(img)
-            print(
-                f"Loaded powerup {x} - Dimensions: {img.get_width()}x{img.get_height()}"
-            )
+
 
     def loadLevel(self, level):
         self.world_data = []
@@ -354,10 +343,6 @@ class Interaction:
         player_bottom = player.pos.y + player.size[1] / 2
 
         # find powerup bounds
-        powerup_centre = (
-            (powerup.pos.x + constants.POWERUP_SIZE / 2),
-            (powerup.pos.y + constants.POWERUP_SIZE / 2),
-        )
         powerup_left = powerup.pos.x - constants.POWERUP_SIZE / 2
         powerup_right = powerup.pos.x + constants.POWERUP_SIZE / 2
         powerup_top = powerup.pos.y - constants.POWERUP_SIZE / 2

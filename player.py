@@ -2,7 +2,6 @@ import constants
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 from constants import SCROLL_THRESH_Y
 from vector import Vector
-from level import Level
 import os
 from pathlib import Path
 
@@ -62,7 +61,6 @@ class Spritesheet:
 
         if state == "walking":
             # Walking animation - use row 1 (second row)
-            print(self.frame_count <= self.animation_speed)
             if self.frame_count >= self.animation_speed:
                 self.current_row = 1
                 if self.is_right:
@@ -97,7 +95,7 @@ class Spritesheet:
                     if img.get_width() > 0:
                         print(f"Successfully loaded: {path}")
                         return img
-                except:
+                except (FileNotFoundError, OSError):
                     continue
         except Exception as e:
             print(f"Error loading {path}: {str(e)}")
@@ -231,7 +229,6 @@ class Player:
         elif type == "gravity":
             self.gravity_time += 600
         elif type == "damage":
-            print("lava")
             self.health.life_lost()
             self.return_to_checkpoint()
         elif type == "ladder":
@@ -240,6 +237,7 @@ class Player:
                 self.return_to_checkpoint()
 
     def update_powerups(self):
+
         if self.speed_time > 0:
             self.speed_time -= 1
             self.speed = constants.PLAYER_SPEED * 1.2
@@ -262,7 +260,7 @@ class Player:
             self.vel.x = self.speed
             self.direction = "right"
 
-        if (self.on_ground) == False:
+        if not self.on_ground:
             self.vel.y += self.gravity
         elif jump and (self.on_ground):  # only when on ground can character jump
             self.vel.y = constants.JUMP_POWER
