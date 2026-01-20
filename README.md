@@ -16,5 +16,9 @@ During the original group project, I was responsible for:
 - Character sprite creation
 - Background and visual design
 
+## requirements
+ - Python
+ - SimpleGUICS2Pygame
+
 ## Assets 
 All visual assets used in this project (sprites, backgrounds, and tiles) were sourced from free-use / royalty-free asset libraries, we only wrote code and made no art assets.
